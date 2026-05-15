@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Sparkles, Eye, EyeOff, ArrowRight, Mail, Lock, User } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { generateId } from '@/lib/utils'
 import { signUp, signInWithGoogle, supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -31,28 +30,24 @@ export default function SignupPage() {
     }
     setLoading(true)
 
-    if (supabase) {
-      try {
-        const data = await signUp(email, password, name)
-        const user = data.user
-        if (user) {
-          login({ id: user.id, name, email: user.email!, createdAt: user.created_at })
-          toast.success(`Welcome to SkillSync AI, ${name}!`)
-          router.push('/create-plan')
-        } else {
-          // Email confirmation required
-          toast.success('Check your email to confirm your account, then sign in.')
-          router.push('/login')
-        }
-      } catch (err: any) {
-        toast.error(err.message || 'Sign up failed — please try again')
+    if (!supabase) {
+      toast.error('Auth not configured — use the Demo button on the login page')
+      setLoading(false)
+      return
+    }
+    try {
+      const data = await signUp(email, password, name)
+      const user = data.user
+      if (user) {
+        login({ id: user.id, name, email: user.email!, createdAt: user.created_at })
+        toast.success(`Welcome to SkillSync AI, ${name}!`)
+        router.push('/create-plan')
+      } else {
+        toast.success('Check your email to confirm your account, then sign in.')
+        router.push('/login')
       }
-    } else {
-      // Demo mode
-      await new Promise(r => setTimeout(r, 900))
-      login({ id: generateId(), name, email, createdAt: new Date().toISOString() })
-      toast.success(`Welcome to SkillSync AI, ${name}!`)
-      router.push('/create-plan')
+    } catch (err: any) {
+      toast.error(err.message || 'Sign up failed — please try again')
     }
 
     setLoading(false)

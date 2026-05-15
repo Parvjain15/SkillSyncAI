@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Sparkles, Eye, EyeOff, ArrowRight, Mail, Lock } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { generateId } from '@/lib/utils'
 import { signIn, signInWithGoogle, supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -26,24 +25,25 @@ export default function LoginPage() {
     }
     setLoading(true)
 
-    if (supabase) {
-      try {
-        const data = await signIn(email, password)
-        const user = data.user
-        const name = user?.user_metadata?.full_name || email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-        login({ id: user!.id, name, email: user!.email!, createdAt: user!.created_at })
-        toast.success(`Welcome back, ${name}!`)
-        router.push('/dashboard')
-      } catch (err: any) {
-        toast.error(err.message || 'Invalid email or password')
-      }
-    } else {
-      // Demo mode — no Supabase configured
-      await new Promise(r => setTimeout(r, 800))
-      const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-      login({ id: generateId(), name, email, createdAt: new Date().toISOString() })
+    if (!supabase) {
+      toast.error('Auth not configured — use the Demo button below')
+      setLoading(false)
+      return
+    }
+    try {
+      const data = await signIn(email, password)
+      const user = data.user
+      const name = user?.user_metadata?.full_name || email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+      login({ id: user!.id, name, email: user!.email!, createdAt: user!.created_at })
       toast.success(`Welcome back, ${name}!`)
       router.push('/dashboard')
+    } catch (err: any) {
+      const msg = err.message || ''
+      if (msg.toLowerCase().includes('invalid login') || msg.toLowerCase().includes('invalid credentials')) {
+        toast.error('No account found with these details — please sign up first')
+      } else {
+        toast.error(msg || 'Sign in failed — please try again')
+      }
     }
 
     setLoading(false)
