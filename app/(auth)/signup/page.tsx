@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Sparkles, Eye, EyeOff, ArrowRight, Mail, Lock, User } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { signUp, signInWithGoogle, supabase } from '@/lib/supabase'
+import { signUp, supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 
 export default function SignupPage() {
   const router = useRouter()
@@ -53,18 +55,14 @@ export default function SignupPage() {
     setLoading(false)
   }
 
-  const handleGoogleSignup = async () => {
-    if (!supabase) {
-      toast.error('Google sign-in requires Supabase — use demo mode instead')
+  const handleGoogleSignup = () => {
+    if (!SUPABASE_URL) {
+      toast.error('Auth not configured — use demo mode instead')
       return
     }
     setGoogleLoading(true)
-    try {
-      await signInWithGoogle()
-    } catch (err: any) {
-      toast.error(err.message || 'Google sign-in failed')
-      setGoogleLoading(false)
-    }
+    const redirectTo = encodeURIComponent(`${window.location.origin}/auth/callback`)
+    window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`
   }
 
   return (
