@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+const BREVO_KEY = process.env.BREVO_API_KEY
+const FROM_EMAIL = process.env.BREVO_FROM_EMAIL || 'noreply@skillsync.ai'
+const FROM_NAME = 'SkillSync AI'
+
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!BREVO_KEY) throw new Error('BREVO_API_KEY is not configured')
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': BREVO_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: FROM_NAME, email: FROM_EMAIL },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.message || 'Brevo send failed')
+  return { id: data.messageId }
+}
 
 function dailyReminderHTML(name: string, sessions: any[]) {
   const sessionRows = sessions.map(s => `
@@ -195,19 +217,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Unknown email type' }, { status: 400 })
     }
 
-    const { data, error } = await resend.emails.send({
-      from: `SkillSync AI <${FROM}>`,
-      to: [to],
-      subject,
-      html,
-    })
-
-    if (error) {
-      console.error('Resend error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ success: true, id: data?.id })
+    const result = await sendEmail(to, subject, html)
+    return NextResponse.json({ success: true, id: result.id })
   } catch (err: any) {
     console.error('Email route error:', err)
     return NextResponse.json({ error: err.message || 'Failed to send email' }, { status: 500 })
