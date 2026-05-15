@@ -112,7 +112,13 @@ export const useStore = create<AppState>()(
       sidebarOpen: true,
       notifications: [],
 
-      login: (user) => set({ user, isAuthenticated: true }),
+      login: (user) => set((state) => {
+        const switchingUser = state.user && state.user.id !== user.id
+        if (switchingUser) {
+          return { user, isAuthenticated: true, goals: [], sessions: [], progress: {}, coachMessages: [], notifications: [] }
+        }
+        return { user, isAuthenticated: true }
+      }),
       logout: () => set({ user: null, isAuthenticated: false, goals: [], sessions: [], progress: {} }),
 
       updateUser: (updates) => set((state) => ({
